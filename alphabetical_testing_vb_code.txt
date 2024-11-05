@@ -1,0 +1,98 @@
+Option Explicit
+Sub alphabetical_testing()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim ticker As String
+    Dim totalVolume As Double
+    Dim quarterlyChange As Double
+    Dim percentChange As Double
+    Dim greatestIncrease As Double
+    Dim greatestDecrease As Double
+    Dim greatestVolume As Double
+    Dim increaseTicker As String
+    Dim decreaseTicker As String
+    Dim volumeTicker As String
+    Dim outputRow As Long
+    Dim openPrice As Double
+    Dim closePrice As Double
+
+    ' Loop through each worksheet
+    For Each ws In ThisWorkbook.Worksheets
+        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+        outputRow = 2 ' Start output on row 2
+
+        ' Clear previous results
+        ws.Range("F1:I1").Value = Array("Ticker Symbol", "Total Volume", "Quarterly Change ($)", "Percent Change (%)")
+        ws.Range("F2:I" & ws.Rows.Count).ClearContents
+        
+        ' Initialize variables
+        greatestIncrease = -1
+        greatestDecrease = 1
+        greatestVolume = 0
+        
+        ' Loop through each row in the worksheet
+        For i = 2 To lastRow
+            ticker = ws.Cells(i, 1).Value ' Assuming Ticker is in Column A
+            totalVolume = totalVolume + ws.Cells(i, 7).Value ' Assuming Volume is in Column G
+            
+            ' Store opening price for the first entry of each ticker
+            If ws.Cells(i - 1, 1).Value <> ticker Then
+                openPrice = ws.Cells(i, 3).Value ' Assuming Open Price is in Column C
+            End If
+            
+            ' Store closing price for the last entry of each ticker
+            If ws.Cells(i + 1, 1).Value <> ticker Or i = lastRow Then
+                closePrice = ws.Cells(i, 4).Value ' Assuming Close Price is in Column D
+                
+                ' Calculate the quarterly change
+                quarterlyChange = closePrice - openPrice
+                
+                ' Calculate the percentage change
+                If openPrice <> 0 Then ' Prevent division by zero
+                    percentChange = (quarterlyChange / openPrice) * 100
+                Else
+                    percentChange = 0 ' Handle as needed if opening price is 0
+                End If
+                
+                ' Write results to output columns
+                ws.Cells(outputRow, 6).Value = ticker
+                ws.Cells(outputRow, 7).Value = totalVolume
+                ws.Cells(outputRow, 8).Value = quarterlyChange
+                ws.Cells(outputRow, 9).Value = percentChange
+                
+                ' Check for greatest increase/decrease/volume
+                If percentChange > greatestIncrease Then
+                    greatestIncrease = percentChange
+                    increaseTicker = ticker
+                End If
+                If percentChange < greatestDecrease Then
+                    greatestDecrease = percentChange
+                    decreaseTicker = ticker
+                End If
+                If totalVolume > greatestVolume Then
+                    greatestVolume = totalVolume
+                    volumeTicker = ticker
+                End If
+                
+                ' Reset totalVolume for the next ticker
+                totalVolume = 0
+                outputRow = outputRow + 1 ' Move to next output row
+            End If
+        Next i
+        
+        ' Write the greatest values at the end of the results
+        ws.Cells(outputRow, 6).Value = "Greatest % Increase: " & increaseTicker & " (" & greatestIncrease & "%)"
+        ws.Cells(outputRow + 1, 6).Value = "Greatest % Decrease: " & decreaseTicker & " (" & greatestDecrease & "%)"
+        ws.Cells(outputRow + 2, 6).Value = "Greatest Total Volume: " & volumeTicker & " (" & greatestVolume & ")"
+        
+        ' Apply Conditional Formatting
+        With ws.Range("H2:H" & outputRow)
+            .FormatConditions.Add Type:=xlCellValue, Operator:=xlGreater, Formula1:=0
+            .FormatConditions(1).Interior.Color = RGB(0, 255, 0) ' Green for positive change
+            .FormatConditions.Add Type:=xlCellValue, Operator:=xlLess, Formula1:=0
+            .FormatConditions(2).Interior.Color = RGB(255, 0, 0) ' Red for negative change
+        End With
+    Next ws
+End Sub
+
